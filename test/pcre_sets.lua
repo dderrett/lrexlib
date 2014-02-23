@@ -1,4 +1,4 @@
--- See Copyright Notice in the file LICENSE
+-- See Copyright Notice in the file lrexlib.h
 
 local luatest = require "luatest"
 local N = luatest.NT
@@ -158,8 +158,8 @@ local function set_m_dfa_exec (lib, flg)
 }
 end
 
-return function (libname)
-  local lib = require (libname)
+return function (libname, isglib)
+  local lib = isglib and _G[libname] or require (libname)
   local flags = lib.flags ()
   local sets = {
     set_f_match  (lib, flags),
@@ -169,10 +169,10 @@ return function (libname)
     set_m_exec   (lib, flags),
     set_m_tfind  (lib, flags),
   }
-  if flags.MAJOR >= 4 then
+  if not isglib and flags.MAJOR >= 4 then
     table.insert (sets, set_named_subpatterns (lib, flags))
   end
-  if flags.MAJOR >= 6 then
+  if isglib or flags.MAJOR >= 6 then
     table.insert (sets, set_m_dfa_exec (lib, flags))
   end
   return sets

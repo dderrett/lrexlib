@@ -10,7 +10,7 @@ LUAROCKS = luarocks
 CP = cp -a
 RM = rm
 RST2HTML = rst2html
-REGNAMES = gnu pcre posix oniguruma tre
+REGNAMES = gnu pcre posix oniguruma tre glib
 LUAROCKS_COMMAND = make
 
 

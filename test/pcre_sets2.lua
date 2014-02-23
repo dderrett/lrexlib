@@ -1,4 +1,4 @@
--- See Copyright Notice in the file LICENSE
+-- See Copyright Notice in the file lrexlib.h
 
 local pat2pcre = require "pat2pcre"
 
@@ -184,14 +184,14 @@ local function set_f_gsub7 (lib, flg)
   return set
 end
 
-return function (libname)
-  local lib = require (libname)
+return function (libname, isglib)
+  local lib = isglib and _G[libname] or require (libname)
   local flags = lib.flags and lib.flags ()
   local sets = {
     set_f_gsub1 (lib, flags),
     set_f_gsub4 (lib, flags),
   }
-  if flags.MAJOR*100 + flags.MINOR > 405 then
+  if isglib or flags.MAJOR*100 + flags.MINOR > 405 then
     table.insert (sets, set_f_gsub7 (lib, flags))
   end
   return sets

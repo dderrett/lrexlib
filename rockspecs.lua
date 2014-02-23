@@ -5,7 +5,7 @@
 -- flavour: regex library
 -- version
 
-local flavours = {"PCRE", "POSIX", "oniguruma", "TRE", "GNU"}
+local flavours = {"PCRE", "POSIX", "oniguruma", "TRE", "GNU", "GLIB"}
 local version_dashed = version:gsub ("%.", "-")
 
 -- FIXME: When Lua 5.1 support is dropped, use an env argument with
@@ -125,6 +125,27 @@ GNU = {
       rex_gnu = {
         defines = {"VERSION=\""..version.."\""},
         sources = {"src/common.c", "src/gnu/lgnu.c"}
+      }
+    }
+  }
+},
+
+GLIB = {
+  external_dependencies = {
+    GLIB = {
+      header = "glib.h",
+      library = "glib"
+    }
+  },
+  build = {
+    type = "builtin",
+    modules = {
+      rex_pcre = {
+        defines = {"VERSION=\""..version.."\""},
+        sources = {"src/common.c", "src/glib/lglib.c", "src/glib/lglib_f.c"},
+        libraries = {"glib"},
+        incdirs = {"$(GLIB_INCDIR)"},
+        libdirs = {"$(GLIB_LIBDIR)"}
       }
     }
   }

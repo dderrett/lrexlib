@@ -1,4 +1,4 @@
--- See Copyright Notice in the file LICENSE
+-- See Copyright Notice in the file lrexlib.h
 
 -- This file should contain only test sets that behave identically
 -- when being run with pcre or posix regex libraries.
@@ -297,8 +297,8 @@ local function set_f_gsub8 (lib, flg)
   }
 end
 
-return function (libname)
-  local lib = require (libname)
+return function (libname, isglib)
+  local lib = isglib and _G[libname] or require (libname)
   return {
     set_f_gmatch    (lib),
     set_f_split     (lib),
