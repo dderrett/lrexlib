@@ -15,6 +15,7 @@ is no warranty.
 
 .. _POSIX: http://www.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap09.html
 .. _PCRE: http://www.pcre.org/pcre.txt
+.. _GLIB: https://developer.gnome.org/glib/2.38/glib-regex-syntax.html
 .. _GNU: ftp://ftp.gnu.org/old-gnu/regex/
 .. _Oniguruma: http://www.geocities.jp/kosako3/oniguruma/doc/RE.txt
 .. _TRE: http://laurikari.net/tre/documentation/

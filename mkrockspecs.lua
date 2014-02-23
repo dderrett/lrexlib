@@ -1,13 +1,37 @@
 -- Generate the rockspecs
 
-require "std"
-
 if select ("#", ...) < 1 then
-  io.stderr:write "Usage: mkrockspecs VERSION\n"
+  io.stderr:write "Usage: mkrockspecs [-d<path>] VERSION\n"
   os.exit ()
 end
 
+local dir
+
 version = select (1, ...)
+
+if version:sub(1,2) == "-d" then
+  dir = version:sub(3)
+  version = select (2, ...)
+end
+
+if not version then
+  error ("you must supply the VERSION argument")
+end
+
+if dir then
+  dir = dir:gsub("[/\\]+$", "")
+  for _, ext in ipairs {"lua"} do
+    if package.path:match ("%?%." .. ext) then
+      local path = dir .. "/?." .. ext .. ";"
+      if package.path:sub(1, #path) ~= path then
+        package.path = path .. package.path
+      end
+      break
+    end
+  end
+end
+
+require "std"
 
 function format (x, indent)
   indent = indent or ""
