@@ -49,7 +49,7 @@ extern flag_pair gregex_error_flags[];
 
 #define REX_TYPENAME REX_LIBNAME"_regex"
 
-#define ALG_CFLAGS_DFLT 0
+#define ALG_CFLAGS_DFLT G_REGEX_RAW
 #define ALG_EFLAGS_DFLT 0
 
 static int getcflags (lua_State *L, int pos);
@@ -167,7 +167,7 @@ static int compile_regex (lua_State *L, const TArgComp *argC, TGrgx **pud) {
   lua_pushvalue (L, ALG_ENVIRONINDEX);
   lua_setmetatable (L, -2);
 
-  ud->pr = g_regex_new (argC->pattern, argC->cflags, 0, &ud->error);
+  ud->pr = g_regex_new (argC->pattern, argC->cflags | G_REGEX_RAW, 0, &ud->error);
   if (!ud->pr)
     return luaL_error (L, "%s (code: %d)", ud->error->message, ud->error->code);
 
@@ -233,12 +233,9 @@ static int Gregex_dfa_exec (lua_State *L)
     lua_pushinteger (L, start_pos + 1);         /* 1-st return value */
     lua_newtable (L);                            /* 2-nd return value */
     for (i=0; i<max; i++) {
-      g_match_info_fetch_pos (ud->match_info, i, &start_pos, &end_pos);
-      /* I don't know why these offsets aren't incremented by 1 to match Lua indexing? */
-      lua_pushinteger (L, start_pos);
-      lua_rawseti (L, -2, i+i+1);
+      g_match_info_fetch_pos (ud->match_info, i, NULL, &end_pos);
       lua_pushinteger (L, end_pos);
-      lua_rawseti (L, -2, i+i+2);
+      lua_rawseti (L, -2, i+1);
     }
     lua_pushinteger (L, max);                    /* 3-rd return value */
     minfo_free (ud);
