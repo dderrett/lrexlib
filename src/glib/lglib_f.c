@@ -38,18 +38,18 @@ static flag_pair gregex_compile_flags[] = {
 
 /*-----------------------  Match flags  -------------------------------------*/
 static flag_pair gregex_match_flags[] = {
-  { "ANCHORED",                      G_REGEX_ANCHORED },
+  { "ANCHORED",                      G_REGEX_MATCH_ANCHORED },
   { "NOTBOL",                        G_REGEX_MATCH_NOTBOL },
   { "NOTEOL",                        G_REGEX_MATCH_NOTEOL },
   { "NOTEMPTY",                      G_REGEX_MATCH_NOTEMPTY },
   { "PARTIAL",                       G_REGEX_MATCH_PARTIAL },
-  { "NEWLINE_CR",                    G_REGEX_NEWLINE_CR },
-  { "NEWLINE_LF",                    G_REGEX_NEWLINE_LF },
-  { "NEWLINE_CRLF",                  G_REGEX_NEWLINE_CRLF },
+  { "NEWLINE_CR",                    G_REGEX_MATCH_NEWLINE_CR },
+  { "NEWLINE_LF",                    G_REGEX_MATCH_NEWLINE_LF },
+  { "NEWLINE_CRLF",                  G_REGEX_MATCH_NEWLINE_CRLF },
   { "NEWLINE_ANY",                   G_REGEX_MATCH_NEWLINE_ANY },
 #if VERSION_GLIB >= 234
-  { "NEWLINE_ANYCRLF",               G_REGEX_NEWLINE_ANYCRLF },
-  { "BSR_ANYCRLF",                   G_REGEX_BSR_ANYCRLF },
+  { "NEWLINE_ANYCRLF",               G_REGEX_MATCH_NEWLINE_ANYCRLF },
+  { "BSR_ANYCRLF",                   G_REGEX_MATCH_BSR_ANYCRLF },
   { "BSR_ANY",                       G_REGEX_MATCH_BSR_ANY },
   { "PARTIAL_SOFT",                  G_REGEX_MATCH_PARTIAL_SOFT },
   { "PARTIAL_HARD",                  G_REGEX_MATCH_PARTIAL_HARD },
