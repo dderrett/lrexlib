@@ -122,47 +122,38 @@ end
 -- returns: a list of failed tests
 local function test_set (set, lib, verbose)
   local list = {}
-  local count = 1
 
   if type (set.Func) == "function" then
     local func = set.Func
 
     for i,test in ipairs (set) do
       if verbose then
-        io.stdout:write("    running function test "..count.."...")
-        io.stdout:flush()
+        io.write ("    running function test "..i.."...")
+        io.flush ()
       end
-      count = count + 1
       local ok, res = test_function (test, func)
       if not ok then
-        if verbose then
-          io.stdout:write("failed!\n")
-          io.stdout:flush()
-        end
-        table.insert (list, {i=i, res})
+        if verbose then io.stdout:write("failed!\n") end
+        table.insert (list, {i=i, test[2], res})
       elseif verbose then
-        io.stdout:write("passed\n")
-        io.stdout:flush()
+        io.write ("passed\n")
+        io.flush ()
       end
     end
 
   elseif type (set.Method) == "string" then
     for i,test in ipairs (set) do
       if verbose then
-        io.stdout:write("    running method test "..count.."...")
-        io.stdout:flush()
+        io.write ("    running method test "..i.."...")
+        io.flush ()
       end
-      count = count + 1
       local ok, res1, res2 = test_method (test, lib.new, set.Method)
       if not ok then
-        if verbose then
-          io.stdout:write("failed!\n")
-          io.stdout:flush()
-        end
-        table.insert (list, {i=i, res1, res2})
+        if verbose then io.stdout:write("failed!\n") end
+        table.insert (list, {i=i, test[3], res1, res2})
       elseif verbose then
-        io.stdout:write("passed\n")
-        io.stdout:flush()
+        io.write ("passed\n")
+        io.flush ()
       end
     end
 

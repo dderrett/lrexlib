@@ -158,32 +158,8 @@ local function set_m_dfa_exec (lib, flg)
 }
 end
 
--- glib doesn't do partial matching return of matches, nor
--- does it support ovecsize being set through the API
-local function set_m_dfa_exec_glib (lib, flg)
-  return {
-  Name = "Method dfa_exec_glib",
-  Method = "dfa_exec",
---{patt,cf,lo},           {subj,st,ef,os,ws}        { results }
-  { {".+"},               {"abcd"},                 {1,{4,3,2,1},4} }, -- [none]
-  { {".+"},               {"abcd",2},               {2,{4,3,2},  3} }, -- positive st
-  { {".+"},               {"abcd",-2},              {3,{4,3},    2} }, -- negative st
-  { {".+"},               {"abcd",5},               {N }            }, -- failing st
-  { {".*"},               {"abcd"},                 {1,{4,3,2,1,0},5}}, -- [none]
-  { {".*?"},              {"abcd"},                 {1,{4,3,2,1,0},5}}, -- non-greedy
-  { {"aBC",flg.CASELESS}, {"abc"},                  {1,{3},1}  }, -- cf
-  { {"aBC","i"         }, {"abc"},                  {1,{3},1}  }, -- cf
-  { {"bc"},               {"abc"},                  {2,{3},1}  }, -- [none]
-  { {"bc",flg.ANCHORED},  {"abc"},                  {N }       }, -- cf
-  { {"bc"},               {"abc",N, flg.ANCHORED},  {N }       }, -- ef
-  { { "(.)b.(d)"},        {"abcd"},                 {1,{4},1}  }, --[captures]
-  { {"abc"},              {"ab"},                   {N }       },
-  { {"abc"},              {"ab",N,flg.PARTIAL},     {true} },
-}
-end
-
-return function (libname, isglib)
-  local lib = isglib and _G[libname] or require (libname)
+return function (libname, isglobal)
+  local lib = isglobal and _G[libname] or require (libname)
   local flags = lib.flags ()
   local sets = {
     set_f_match  (lib, flags),
@@ -193,14 +169,11 @@ return function (libname, isglib)
     set_m_exec   (lib, flags),
     set_m_tfind  (lib, flags),
   }
-  if not isglib and flags.MAJOR >= 4 then
+  if flags.MAJOR >= 4 then
     table.insert (sets, set_named_subpatterns (lib, flags))
   end
-  if not isglib and flags.MAJOR >= 6 then
+  if flags.MAJOR >= 6 then
     table.insert (sets, set_m_dfa_exec (lib, flags))
-  end
-  if isglib then
-    table.insert (sets, set_m_dfa_exec_glib (lib, flags))
   end
   return sets
 end

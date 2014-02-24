@@ -14,6 +14,10 @@
  *    functions 'compile_flags()' and 'match_flags()' return just their respective
  *    flags, since GLib has a different and smaller set of such flags, for
  *    regex compile vs. match functions
+ *  - Using POSIX character classes against strings with non-ASCII characters
+ *    might match high-order characters, because glib always sets PCRE_UCP
+ *    even if G_REGEX_RAW is set. For example, '[:alpha;]' matches certain
+ *    non-ASCII bytes.
  *  - obviously quite a bit else is changed to interface to GLib's regex instead
  *    of PCRE, but hopefully those changes aren't visible to user/caller
  */
@@ -174,35 +178,6 @@ static int compile_regex (lua_State *L, const TArgComp *argC, TGrgx **pud) {
   if (pud) *pud = ud;
   return 1;
 }
-
-/* unfortunately glib doesn't provide a way to learn what names are in the
-   pattern - it supports named groups, but expects the function caller to already
-   know what names to get.
- */
-#if 0
-/* the target table must be on lua stack top */
-static void do_named_subpatterns (lua_State *L, TGrgx *ud, const char *text) {
-  int i, namecount, name_entry_size;
-  unsigned char *name_table, *tabptr;
-
-  /* do named subpatterns - NJG */
-  pcre_fullinfo (ud->pr, ud->extra, PCRE_INFO_NAMECOUNT, &namecount);
-  if (namecount <= 0)
-    return;
-  pcre_fullinfo (ud->pr, ud->extra, PCRE_INFO_NAMETABLE, &name_table);
-  pcre_fullinfo (ud->pr, ud->extra, PCRE_INFO_NAMEENTRYSIZE, &name_entry_size);
-  tabptr = name_table;
-  for (i = 0; i < namecount; i++) {
-    int n = (tabptr[0] << 8) | tabptr[1]; /* number of the capturing parenthesis */
-    if (n > 0 && n <= ALG_NSUB(ud)) {   /* check range */
-      lua_pushstring (L, (char *)tabptr + 2); /* name of the capture, zero terminated */
-      ALG_PUSHSUB_OR_FALSE (L, ud, text, n);
-      lua_rawset (L, -3);
-    }
-    tabptr += name_entry_size;
-  }
-}
-#endif
 
 /* method r:dfa_exec (s, [st], [ef]) */
 static void checkarg_dfa_exec (lua_State *L, TArgExec *argE, TGrgx **ud) {
