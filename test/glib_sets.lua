@@ -12,7 +12,6 @@ local function fill (n, m)
   return t
 end
 
-
 -- glib doesn't do partial matching return of matches, nor
 -- does it support ovecsize being set through the API
 local function set_m_dfa_exec (lib, flg)
@@ -47,7 +46,7 @@ end
 
 -- sadly, glib *always* sets the PCRE_UCP compilation flag, regardless
 -- of REGEX_RAW being set - this is, frankly, a bug in my opinion
--- but anyway, it means things like '[:alpha:]' match things that Lua's
+-- but anyway, it means things like '[:alpha:]' and '\w' match things that Lua's
 -- '%a' does not match
 local function set_f_gsub7 (lib, flg)
   local subj = ""
@@ -66,8 +65,12 @@ local function set_f_gsub7 (lib, flg)
     { {subj, "%C", "" }, },
     { {subj, "[a-z]", "" }, },
     { {subj, "[^a-z]", "" }, },
+    { {subj, "%d", "" }, },
+    { {subj, "%D", "" }, },
     { {subj, "%p", "" }, },
     { {subj, "%P", "" }, },
+--  { {subj, "%s", "" }, },
+--  { {subj, "%S", "" }, },
     { {subj, "[A-Z]", "" }, },
     { {subj, "[^A-Z]", "" }, }, -- 10
     { {subj, "[a-zA-Z0-9]", "" }, },
@@ -81,6 +84,8 @@ local function set_f_gsub7 (lib, flg)
 --  { {subj, "[%A]", "" }, },
     { {subj, "[%c]", "" }, },
     { {subj, "[%C]", "" }, },
+    { {subj, "[%d]", "" }, },
+    { {subj, "[%D]", "" }, },
 --  { {subj, "[%l]", "" }, },
 --  { {subj, "[%L]", "" }, },
     { {subj, "[%p]", "" }, },

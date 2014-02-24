@@ -30,6 +30,10 @@ static int generate_error  (lua_State *L, const TUserdata *ud, int errcode);
 #  define ALG_GETCARGS(a,b,c)
 #endif
 
+#ifndef ALG_GETEFLAGS
+#  define ALG_GETEFLAGS(L,idx) luaL_optint (L, idx, ALG_EFLAGS_DFLT)
+#endif
+
 #ifndef DO_NAMED_SUBPATTERNS
 #define DO_NAMED_SUBPATTERNS(a,b,c)
 #endif
@@ -73,7 +77,7 @@ static int OptLimit (lua_State *L, int pos) {
   if (lua_isfunction (L, pos))
     return GSUB_CONDITIONAL;
   if (lua_isnumber (L, pos)) {
-    int a = lua_tointeger (L, pos);
+    int a = (int) lua_tointeger (L, pos);
     return a < 0 ? 0 : a;
   }
   return luaL_typerror (L, pos, "number or function");
@@ -181,7 +185,7 @@ static void checkarg_gsub (lua_State *L, TArgComp *argC, TArgExec *argE) {
   argE->funcpos2 = 4;
   argE->maxmatch = OptLimit (L, 4);
   argC->cflags = ALG_GETCFLAGS (L, 5);
-  argE->eflags = luaL_optint (L, 6, ALG_EFLAGS_DFLT);
+  argE->eflags = ALG_GETEFLAGS (L, 6);
   ALG_GETCARGS (L, 7, argC);
 }
 
@@ -193,7 +197,7 @@ static void checkarg_find_func (lua_State *L, TArgComp *argC, TArgExec *argE) {
   check_pattern (L, 2, argC);
   argE->startoffset = get_startoffset (L, 3, argE->textlen);
   argC->cflags = ALG_GETCFLAGS (L, 4);
-  argE->eflags = luaL_optint (L, 5, ALG_EFLAGS_DFLT);
+  argE->eflags = ALG_GETEFLAGS (L, 5);
   ALG_GETCARGS (L, 6, argC);
 }
 
@@ -204,7 +208,7 @@ static void checkarg_gmatch_split (lua_State *L, TArgComp *argC, TArgExec *argE)
   check_subject (L, 1, argE);
   check_pattern (L, 2, argC);
   argC->cflags = ALG_GETCFLAGS (L, 3);
-  argE->eflags = luaL_optint (L, 4, ALG_EFLAGS_DFLT);
+  argE->eflags = ALG_GETEFLAGS (L, 4);
   ALG_GETCARGS (L, 5, argC);
 }
 
@@ -217,7 +221,7 @@ static void checkarg_find_method (lua_State *L, TArgExec *argE, TUserdata **ud) 
   *ud = check_ud (L);
   check_subject (L, 2, argE);
   argE->startoffset = get_startoffset (L, 3, argE->textlen);
-  argE->eflags = luaL_optint (L, 4, ALG_EFLAGS_DFLT);
+  argE->eflags = ALG_GETEFLAGS (L, 4);
 }
 
 
@@ -305,8 +309,8 @@ static int algf_gsub (lua_State *L) {
       while (bufferZ_next (&BufRep, &iter, &num, &str)) {
         if (str)
           buffer_addlstring (pBuf, str, num);
-        else if (num == 0 || ALG_SUBVALID (ud,num))
-          buffer_addlstring (pBuf, argE.text + ALG_BASE(st) + ALG_SUBBEG(ud,num), ALG_SUBLEN(ud,num));
+        else if (num == 0 || ALG_SUBVALID (ud,(int)num))
+          buffer_addlstring (pBuf, argE.text + ALG_BASE(st) + ALG_SUBBEG(ud,(int)num), ALG_SUBLEN(ud,(int)num));
       }
       curr_subst = 1;
     }
@@ -383,7 +387,7 @@ static int algf_gsub (lua_State *L) {
       }
       /* Handle the 2-nd return value */
       if (lua_type (L, -1) == LUA_TNUMBER) {    /* no coercion is allowed here */
-        int n = lua_tointeger (L, -1);
+        int n = (int) lua_tointeger (L, -1);
         if (n < 0)                              /* n */
           n = 0;
         argE.maxmatch = n_match + n;
@@ -480,10 +484,10 @@ static int gmatch_iter (lua_State *L) {
   TArgExec argE;
   TUserdata *ud    = (TUserdata*) lua_touserdata (L, lua_upvalueindex (1));
   argE.text        = lua_tolstring (L, lua_upvalueindex (2), &argE.textlen);
-  argE.eflags      = lua_tointeger (L, lua_upvalueindex (3));
-  argE.startoffset = lua_tointeger (L, lua_upvalueindex (4));
+  argE.eflags      = (int) lua_tointeger (L, lua_upvalueindex (3));
+  argE.startoffset = (int) lua_tointeger (L, lua_upvalueindex (4));
 #ifdef ALG_USERETRY
-  retry            = lua_tointeger (L, lua_upvalueindex (5));
+  retry            = (int) lua_tointeger (L, lua_upvalueindex (5));
 #endif
 
   if (argE.startoffset > (int)argE.textlen)
@@ -542,9 +546,9 @@ static int split_iter (lua_State *L) {
   TArgExec argE;
   TUserdata *ud    = (TUserdata*) lua_touserdata (L, lua_upvalueindex (1));
   argE.text        = lua_tolstring (L, lua_upvalueindex (2), &argE.textlen);
-  argE.eflags      = lua_tointeger (L, lua_upvalueindex (3));
-  argE.startoffset = lua_tointeger (L, lua_upvalueindex (4));
-  incr             = lua_tointeger (L, lua_upvalueindex (5));
+  argE.eflags      = (int) lua_tointeger (L, lua_upvalueindex (3));
+  argE.startoffset = (int) lua_tointeger (L, lua_upvalueindex (4));
+  incr             = (int) lua_tointeger (L, lua_upvalueindex (5));
 
   if (argE.startoffset > (int)argE.textlen)
     return 0;

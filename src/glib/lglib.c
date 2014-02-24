@@ -16,7 +16,7 @@
  *    regex compile vs. match functions
  *  - Using POSIX character classes against strings with non-ASCII characters
  *    might match high-order characters, because glib always sets PCRE_UCP
- *    even if G_REGEX_RAW is set. For example, '[:alpha;]' matches certain
+ *    even if G_REGEX_RAW is set. For example, '[:alpha;]' and '\w' match certain
  *    non-ASCII bytes.
  *  - obviously quite a bit else is changed to interface to GLib's regex instead
  *    of PCRE, but hopefully those changes aren't visible to user/caller
@@ -30,7 +30,9 @@
 
 #include "lua.h"
 #include "lauxlib.h"
-#include "common.h"
+#include "lrexlib.h"
+
+#define WIRESHARK
 
 extern int Gregex_get_flags (lua_State *L);
 extern int Gregex_get_compile_flags (lua_State *L);
@@ -80,8 +82,62 @@ static int getcflags (lua_State *L, int pos);
 
 #define ALG_BASE(st)  0
 #define ALG_PULL
-/* we define ALG_USERETRY because Glib does expose PCRE's NOTEMPTY and ANCHORED flags */
+/* we define ALG_USERETRY because GLib does expose PCRE's NOTEMPTY and ANCHORED flags */
 #define ALG_USERETRY
+
+#define VERSION_GLIB (GLIB_MAJOR_VERSION*100 + GLIB_MINOR_VERSION)
+/* unfortunately GLib doesn't expose cerrtain macros it would be nice to have */
+#if VERSION_GLIB >= 234
+# define G_REGEX_COMPILE_MASK_234 (G_REGEX_FIRSTLINE | \
+                                  G_REGEX_NEWLINE_ANYCRLF | \
+                                  G_REGEX_BSR_ANYCRLF | \
+                                  G_REGEX_JAVASCRIPT_COMPAT)
+#else
+# define G_REGEX_COMPILE_MASK_234  0
+#endif
+
+/* Mask of all the possible values for GRegexCompileFlags. */
+#define G_REGEX_COMPILE_MASK (G_REGEX_CASELESS | \
+                              G_REGEX_MULTILINE | \
+                              G_REGEX_DOTALL | \
+                              G_REGEX_EXTENDED | \
+                              G_REGEX_ANCHORED | \
+                              G_REGEX_DOLLAR_ENDONLY | \
+                              G_REGEX_UNGREEDY | \
+                              G_REGEX_RAW | \
+                              G_REGEX_NO_AUTO_CAPTURE | \
+                              G_REGEX_OPTIMIZE | \
+                              G_REGEX_DUPNAMES | \
+                              G_REGEX_NEWLINE_CR | \
+                              G_REGEX_NEWLINE_LF | \
+                              G_REGEX_NEWLINE_CRLF | \
+                              G_REGEX_COMPILE_MASK_234)
+
+#if VERSION_GLIB >= 234
+# define G_REGEX_MATCH_MASK_234 (G_REGEX_MATCH_NEWLINE_ANYCRLF | \
+                                  G_REGEX_MATCH_BSR_ANYCRLF | \
+                                  G_REGEX_MATCH_BSR_ANY | \
+                                  G_REGEX_MATCH_PARTIAL_SOFT | \
+                                  G_REGEX_MATCH_PARTIAL_HARD | \
+                                  G_REGEX_MATCH_NOTEMPTY_ATSTART)
+#else
+# define G_REGEX_MATCH_MASK_234  0
+#endif
+
+/* Mask of all the possible values for GRegexMatchFlags. */
+#define G_REGEX_MATCH_MASK (G_REGEX_MATCH_ANCHORED | \
+                            G_REGEX_MATCH_NOTBOL | \
+                            G_REGEX_MATCH_NOTEOL | \
+                            G_REGEX_MATCH_NOTEMPTY | \
+                            G_REGEX_MATCH_PARTIAL | \
+                            G_REGEX_MATCH_NEWLINE_CR | \
+                            G_REGEX_MATCH_NEWLINE_LF | \
+                            G_REGEX_MATCH_NEWLINE_CRLF | \
+                            G_REGEX_MATCH_NEWLINE_ANY)
+
+
+static int check_eflags(lua_State *L, const int idx, const int def);
+#define ALG_GETEFLAGS(L,idx) check_eflags(L, idx, ALG_EFLAGS_DFLT)
 
 typedef struct {
   GRegex     * pr;
@@ -133,11 +189,16 @@ static int getcflags (lua_State *L, int pos) {
     case LUA_TNONE:
     case LUA_TNIL:
       return ALG_CFLAGS_DFLT;
-    case LUA_TNUMBER:
-      return (int) lua_tointeger (L, pos);
+    case LUA_TNUMBER: {
+      int res = (int) lua_tointeger (L, pos);
+      if ((res & ~G_REGEX_COMPILE_MASK) != 0) {
+        return luaL_error (L, "GLib Regex compile flag is invalid");
+      }
+      return res;
+    }
     case LUA_TSTRING: {
       const char *s = lua_tostring (L, pos);
-      GRegexCompileFlags res = 0, ch;
+      int res = 0, ch;
       while ((ch = *s++) != '\0') {
         if (ch == 'i') res |= G_REGEX_CASELESS;
         else if (ch == 'm') res |= G_REGEX_MULTILINE;
@@ -152,6 +213,14 @@ static int getcflags (lua_State *L, int pos) {
   }
 }
 
+static int check_eflags(lua_State *L, const int idx, const int def) {
+  int eflags = luaL_optint (L, idx, def);
+  if ((eflags & ~G_REGEX_MATCH_MASK) != 0) {
+    return luaL_error (L, "GLib Regex match flag is invalid");
+  }
+  return eflags;
+}
+
 /* this function is used in algo.h as well */
 static int generate_error (lua_State *L, const TGrgx *ud, int errcode) {
   const char *key = get_flag_key (gregex_error_flags, ud->error->code);
@@ -159,7 +228,7 @@ static int generate_error (lua_State *L, const TGrgx *ud, int errcode) {
   if (key)
     return luaL_error (L, "error G_REGEX_%s (%s)", key, ud->error->message);
   else
-    return luaL_error (L, "Glib Regex error: %s (code %d)", ud->error->message, ud->error->code);
+    return luaL_error (L, "GLib Regex error: %s (code %d)", ud->error->message, ud->error->code);
 }
 
 
@@ -184,7 +253,7 @@ static void checkarg_dfa_exec (lua_State *L, TArgExec *argE, TGrgx **ud) {
   *ud = check_ud (L);
   argE->text = luaL_checklstring (L, 2, &argE->textlen);
   argE->startoffset = get_startoffset (L, 3, argE->textlen);
-  argE->eflags = luaL_optint (L, 4, ALG_EFLAGS_DFLT);
+  argE->eflags = ALG_GETEFLAGS (L, 4);
 }
 
 /* unlike PCRE, partial matching won't return the actual substrings/matches */
@@ -196,7 +265,7 @@ static int Gregex_dfa_exec (lua_State *L)
 
   checkarg_dfa_exec (L, &argE, &ud);
 
-  gerror_free(ud);
+  gerror_free (ud);
 
   res = g_regex_match_all_full (ud->pr, argE.text, (int)argE.textlen,
     argE.startoffset, argE.eflags, &ud->match_info, &ud->error);
@@ -209,6 +278,7 @@ static int Gregex_dfa_exec (lua_State *L)
     lua_newtable (L);                            /* 2-nd return value */
     for (i=0; i<max; i++) {
       g_match_info_fetch_pos (ud->match_info, i, NULL, &end_pos);
+      /* I don't know why these offsets aren't incremented by 1 to match Lua indexing? */
       lua_pushinteger (L, end_pos);
       lua_rawseti (L, -2, i+1);
     }
@@ -233,7 +303,7 @@ static int Gregex_dfa_exec (lua_State *L)
 #ifdef ALG_USERETRY
   static int gmatch_exec (TUserdata *ud, TArgExec *argE, int retry) {
     minfo_free (ud);
-    gerror_free(ud);
+    gerror_free (ud);
     int eflags = retry ? (argE->eflags|G_REGEX_MATCH_NOTEMPTY|G_REGEX_MATCH_ANCHORED) : argE->eflags;
     return g_regex_match_full (ud->pr, argE->text, argE->textlen,
       argE->startoffset, eflags, &ud->match_info, &ud->error);
@@ -241,7 +311,7 @@ static int Gregex_dfa_exec (lua_State *L)
 #else
   static int gmatch_exec (TUserdata *ud, TArgExec *argE) {
     minfo_free (ud);
-    gerror_free(ud);
+    gerror_free (ud);
     return g_regex_match_full (ud->pr, argE->text, argE->textlen,
       argE->startoffset, argE->eflags, &ud->match_info, &ud->error);
   }
@@ -253,7 +323,7 @@ static void gmatch_pushsubject (lua_State *L, TArgExec *argE) {
 
 static int findmatch_exec (TGrgx *ud, TArgExec *argE) {
   minfo_free (ud);
-  gerror_free(ud);
+  gerror_free (ud);
   return g_regex_match_full (ud->pr, argE->text, argE->textlen,
     argE->startoffset, argE->eflags, &ud->match_info, &ud->error);
 }
@@ -261,7 +331,7 @@ static int findmatch_exec (TGrgx *ud, TArgExec *argE) {
 #ifdef ALG_USERETRY
   static int gsub_exec (TGrgx *ud, TArgExec *argE, int st, int retry) {
     minfo_free (ud);
-    gerror_free(ud);
+    gerror_free (ud);
     int eflags = retry ? (argE->eflags|G_REGEX_MATCH_NOTEMPTY|G_REGEX_MATCH_ANCHORED) : argE->eflags;
     return g_regex_match_full (ud->pr, argE->text, argE->textlen,
       st, eflags, &ud->match_info, &ud->error);
@@ -269,7 +339,7 @@ static int findmatch_exec (TGrgx *ud, TArgExec *argE) {
 #else
   static int gsub_exec (TGrgx *ud, TArgExec *argE, int st) {
     minfo_free (ud);
-    gerror_free(ud);
+    gerror_free (ud);
     return g_regex_match_full (ud->pr, argE->text, argE->textlen,
       st, argE->eflags, &ud->match_info, &ud->error);
   }
@@ -277,7 +347,7 @@ static int findmatch_exec (TGrgx *ud, TArgExec *argE) {
 
 static int split_exec (TGrgx *ud, TArgExec *argE, int offset) {
   minfo_free (ud);
-  gerror_free(ud);
+  gerror_free (ud);
   return g_regex_match_full (ud->pr, argE->text, argE->textlen, offset,
                     argE->eflags, &ud->match_info, &ud->error);
 }
