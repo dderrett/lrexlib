@@ -204,15 +204,41 @@ static flag_pair pcre_config_flags[] = {
   { NULL, 0 }
 };
 
+static int pcre_config_safe(int flag, lua_Integer* value) {
+  int result;
+  int iVal;
+  unsigned long ulVal;
+
+  /* Need to pass a different type to pcre_config depending on what is being asked for. */
+  if (flag == PCRE_CONFIG_MATCH_LIMIT  
+#if VERSION_PCRE >= 650
+    || flag == PCRE_CONFIG_MATCH_LIMIT_RECURSION
+#endif
+    )
+  {
+    result = pcre_config(flag, &ulVal);
+    if (result == 0)
+      *value = ulVal;
+  }
+  else
+  {
+    result = pcre_config(flag, &iVal);
+    if (result == 0)
+      *value = iVal;
+  }
+
+  return result;
+}
+
 int Lpcre_config (lua_State *L) {
-  int val;
+  lua_Integer val;
   flag_pair *fp;
   if (lua_istable (L, 1))
     lua_settop (L, 1);
   else
     lua_newtable (L);
   for (fp = pcre_config_flags; fp->key; ++fp) {
-    if (0 == pcre_config (fp->val, &val)) {
+    if (0 == pcre_config_safe (fp->val, &val)) {
       lua_pushinteger (L, val);
       lua_setfield (L, -2, fp->key);
     }
